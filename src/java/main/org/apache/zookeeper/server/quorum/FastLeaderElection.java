@@ -240,6 +240,7 @@ public class FastLeaderElection implements Election {
                 this.manager = manager;
             }
 
+            @Override
             public void run() {
 
                 Message response;
@@ -247,7 +248,9 @@ public class FastLeaderElection implements Election {
                     // Sleeps on receive
                     try{
                         response = manager.pollRecvQueue(3000, TimeUnit.MILLISECONDS);
-                        if(response == null) continue;
+                        if(response == null) {
+                            continue;
+                        }
 
                         /*
                          * If it is from an observer, respond right away.
@@ -431,12 +434,15 @@ public class FastLeaderElection implements Election {
                 this.manager = manager;
             }
 
+            @Override
             public void run() {
                 while (!stop) {
                     try {
                         ToSend m = sendqueue.poll(3000, TimeUnit.MILLISECONDS);
-                        if(m == null) continue;
-
+                        if(m == null) {
+                            continue;
+                        }
+                        //处理发送消息
                         process(m);
                     } catch (InterruptedException e) {
                         break;
@@ -451,11 +457,14 @@ public class FastLeaderElection implements Election {
              * @param m     message to send
              */
             void process(ToSend m) {
+
+                //序列化消息
                 ByteBuffer requestBuffer = buildMsg(m.state.ordinal(), 
                                                         m.leader,
                                                         m.zxid, 
-                                                        m.electionEpoch, 
+                                                        m.electionEpoch,
                                                         m.peerEpoch);
+                //发送数据
                 manager.toSend(m.sid, requestBuffer);
             }
         }
@@ -477,6 +486,8 @@ public class FastLeaderElection implements Election {
                     "WorkerSender[myid=" + self.getId() + "]");
             t.setDaemon(true);
             t.start();
+
+
 
             this.wr = new WorkerReceiver(manager);
 
@@ -523,6 +534,7 @@ public class FastLeaderElection implements Election {
     public FastLeaderElection(QuorumPeer self, QuorumCnxManager manager){
         this.stop = false;
         this.manager = manager;
+
         // 初始化sendqueue、recvqueue 并且启动WorkerSender和WorkerReceiver线程
         starter(self, manager);
     }
@@ -686,8 +698,11 @@ public class FastLeaderElection implements Election {
          */
 
         if(leader != self.getId()){
-            if(votes.get(leader) == null) predicate = false;
-            else if(votes.get(leader).getState() != ServerState.LEADING) predicate = false;
+            if(votes.get(leader) == null) {
+                predicate = false;
+            } else if(votes.get(leader).getState() != ServerState.LEADING) {
+                predicate = false;
+            }
         } else if(logicalclock.get() != electionEpoch) {
             predicate = false;
         } 
@@ -761,9 +776,11 @@ public class FastLeaderElection implements Election {
      * @return long
      */
     private long getInitId(){
-        if(self.getLearnerType() == LearnerType.PARTICIPANT)
+        if(self.getLearnerType() == LearnerType.PARTICIPANT) {
             return self.getId();
-        else return Long.MIN_VALUE;
+        } else {
+            return Long.MIN_VALUE;
+        }
     }
 
     /**
@@ -772,9 +789,11 @@ public class FastLeaderElection implements Election {
      * @return long
      */
     private long getInitLastLoggedZxid(){
-        if(self.getLearnerType() == LearnerType.PARTICIPANT)
+        if(self.getLearnerType() == LearnerType.PARTICIPANT) {
             return self.getLastLoggedZxid();
-        else return Long.MIN_VALUE;
+        } else {
+            return Long.MIN_VALUE;
+        }
     }
 
     /**
@@ -783,15 +802,17 @@ public class FastLeaderElection implements Election {
      * @return long
      */
     private long getPeerEpoch(){
-        if(self.getLearnerType() == LearnerType.PARTICIPANT)
-        	try {
-        		return self.getCurrentEpoch();
-        	} catch(IOException e) {
-        		RuntimeException re = new RuntimeException(e.getMessage());
-        		re.setStackTrace(e.getStackTrace());
-        		throw re;
-        	}
-        else return Long.MIN_VALUE;
+        if(self.getLearnerType() == LearnerType.PARTICIPANT) {
+            try {
+                return self.getCurrentEpoch();
+            } catch(IOException e) {
+                RuntimeException re = new RuntimeException(e.getMessage());
+                re.setStackTrace(e.getStackTrace());
+                throw re;
+            }
+        } else {
+            return Long.MIN_VALUE;
+        }
     }
     
     /**
@@ -799,6 +820,7 @@ public class FastLeaderElection implements Election {
      * changes its state to LOOKING, this method is invoked, and it
      * sends notifications to all other peers.
      */
+    @Override
     public Vote lookForLeader() throws InterruptedException {
         try {
             self.jmxLeaderElectionBean = new LeaderElectionBean();

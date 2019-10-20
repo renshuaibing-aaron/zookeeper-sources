@@ -66,7 +66,8 @@ public class LENonTerminateTest extends ZKTestCase {
          * 
          * JMX bean method calls are removed to reduce noise.
          */
-        public Vote lookForLeader() throws InterruptedException {            
+        @Override
+        public Vote lookForLeader() throws InterruptedException {
             self.setCurrentVote(new Vote(self.getId(),
                     self.getLastLoggedZxid()));
             // We are going to look for a leader by casting a vote for ourself
@@ -222,6 +223,7 @@ public class LENonTerminateTest extends ZKTestCase {
                     new QuorumMaj(countParticipants(quorumPeers)));
         }
         
+        @Override
         protected  Election createElectionAlgorithm(int electionAlgorithm){
             LOG.info("Returning mocked leader election");
             return new MockLeaderElection(this);

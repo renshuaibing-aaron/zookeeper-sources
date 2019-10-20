@@ -47,14 +47,17 @@ public class FLEDontCareTest {
             super(peer, cnxManager);
         }
 
+        @Override
         public boolean termPredicate(HashMap<Long, Vote> votes, Vote vote) {
             return super.termPredicate(votes, vote);
         }
 
+        @Override
         public boolean checkLeader(HashMap<Long,Vote> votes, long leader, long electionEpoch) {
             return super.checkLeader(votes, leader, electionEpoch);
         }
 
+        @Override
         public boolean ooePredicate(HashMap<Long,Vote> recv,
                                     HashMap<Long,Vote> ooe,
                                     FastLeaderElection.Notification n) {

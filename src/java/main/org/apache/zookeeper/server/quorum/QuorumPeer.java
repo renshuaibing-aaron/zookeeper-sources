@@ -644,6 +644,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         // 加载数据
         loadDataBase();
         // 开启读取数据线程
+        //启动线程监听
         cnxnFactory.start();
         // 进行领导者选举，确定服务器的角色，再针对不同的服务器角色进行初始化
         startLeaderElection();
@@ -716,6 +717,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     synchronized public void startLeaderElection() {
     	try {
     	    // 生成投票，投给自己
+            //所有节点启动的初始状态都是LOOKING，因此这里都会是创建一张投自己为Leader的票
     		currentVote = new Vote(myid, getLastLoggedZxid(), getCurrentEpoch());
     	} catch(IOException e) {
     		RuntimeException re = new RuntimeException(e.getMessage());
@@ -740,6 +742,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                 throw new RuntimeException(e);
             }
         }
+        //初始化选举算法，electionType默认为3
         this.electionAlg = createElectionAlgorithm(electionType);
     }
     
@@ -837,8 +840,12 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         case 3:
             // 初始化负责各台服务器之间的底层Leader选举过程中的网络通信。
             qcm = createCnxnManager();
+
+            //监听选举事件的listener
             QuorumCnxManager.Listener listener = qcm.listener;
             if(listener != null){
+
+                //开启监听器
                 listener.start();
                 // 默认用的是FastLeaderElection
                 le = new FastLeaderElection(this, qcm);

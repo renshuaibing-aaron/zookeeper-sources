@@ -549,6 +549,7 @@ public class QuorumCnxManager {
                  addToSendQueue(bq, b);
              }
              // 如果还没有连接到这个服务器就连一下
+            //连接指定ServerId，该方法内部如果连接已经建立则会返回，否则创建连接
              connectOne(sid);
                 
         }
@@ -748,6 +749,8 @@ public class QuorumCnxManager {
                     if (listenOnAllIPs) {
                         int port = view.get(QuorumCnxManager.this.mySid)
                             .electionAddr.getPort();
+
+                        // addr=根据配置信息获取地址
                         addr = new InetSocketAddress(port);
                     } else {
                         addr = view.get(QuorumCnxManager.this.mySid)
@@ -756,9 +759,15 @@ public class QuorumCnxManager {
                     LOG.info("My election bind port: " + addr.toString());
                     setName(view.get(QuorumCnxManager.this.mySid)
                             .electionAddr.toString());
+
+                    //监听选举端口
                     ss.bind(addr);
                     while (!shutdown) {
-                        Socket client = ss.accept(); //
+
+                        //接收客户端连接
+                        Socket client = ss.accept();
+
+                        //设置连接参数
                         setSockOpts(client);
                         LOG.info("Received connection request "
                                 + client.getRemoteSocketAddress());
@@ -768,6 +777,8 @@ public class QuorumCnxManager {
                         // enabled. This is required because sasl server
                         // authentication process may take few seconds to finish,
                         // this may delay next peer connection requests.
+
+                        //开始处理
                         if (quorumSaslAuthEnabled) {
                             receiveConnectionAsync(client);
                         } else {
