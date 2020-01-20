@@ -1,20 +1,3 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package org.apache.zookeeper.server.quorum;
 
 import java.io.File;
@@ -123,6 +106,11 @@ public class QuorumPeerMain {
         }
     }
 
+    /**
+     * 集群启动
+     * @param config
+     * @throws IOException
+     */
     public void runFromConfig(QuorumPeerConfig config) throws IOException {
       try {
           ManagedUtil.registerLog4jMBeans();
@@ -137,8 +125,10 @@ public class QuorumPeerMain {
           cnxnFactory.configure(config.getClientPortAddress(),
                                 config.getMaxClientCnxns());
 
+          //  new QuorumPeer()  可以理解成, 创建了集群中的一个server
           quorumPeer = getQuorumPeer();
 
+          //  将配置文件中解析出来的文件原封不动的赋值给我们的new 的QuorumPeer
           quorumPeer.setQuorumPeers(config.getServers());
           quorumPeer.setTxnFactory(new FileTxnSnapLog(
                   new File(config.getDataLogDir()),
@@ -171,6 +161,11 @@ public class QuorumPeerMain {
           quorumPeer.setQuorumCnxnThreadsSize(config.quorumCnxnThreadsSize);
           quorumPeer.initialize();
 
+          //  着重看这个方法
+          //1.数据恢复
+          //2.经过上下文的工厂,启动这个线程类,使当前的server拥有接受client请求的能力(但是RequestProcessor没有初始化,因此它能接受request,却不能处理request)
+          //3.选举Leader,在这个过程中会在Follower中选举出一个leader,确立好集群中的 Leader,Follower,Observer的三大角色
+          //4.启动当前线程类QuorumPeer.java
           quorumPeer.start();
           quorumPeer.join();
       } catch (InterruptedException e) {

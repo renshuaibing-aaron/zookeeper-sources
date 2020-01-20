@@ -1,20 +1,3 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package org.apache.zookeeper.server.quorum;
 
 import java.io.BufferedReader;
@@ -641,14 +624,14 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     
     @Override
     public synchronized void start() {
-        // 加载数据
+        // 从磁盘中加载数据到内存中
         loadDataBase();
         // 开启读取数据线程
-        //启动线程监听
+        //  启动上下文的这个工厂，他是个线程类, 接受客户端的请求
         cnxnFactory.start();
         // 进行领导者选举，确定服务器的角色，再针对不同的服务器角色进行初始化
         startLeaderElection();
-        // 本类的run方法
+        // 本类的run方法 确定服务器的角色, 启动的就是当前类的run方法在900行
         super.start();
     }
 
@@ -814,8 +797,8 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     }
      
     protected Leader makeLeader(FileTxnSnapLog logFactory) throws IOException {
-        return new Leader(this, new LeaderZooKeeperServer(logFactory,
-                this,new ZooKeeperServer.BasicDataTreeBuilder(), this.zkDb));
+        LeaderZooKeeperServer leaderZooKeeperServer = new LeaderZooKeeperServer(logFactory, this, new ZooKeeperServer.BasicDataTreeBuilder(), this.zkDb);
+        return new Leader(this, leaderZooKeeperServer);
     }
     
     protected Observer makeObserver(FileTxnSnapLog logFactory) throws IOException {
@@ -889,6 +872,9 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         return null;
     }
 
+    /**
+     * 通过了上面的角色的选举之后,集群中各个节点的角色已经确定下来了,那拥有不同角色的节点就会进入下面代码中不同的case分支中
+     */
     @Override
     public void run() {
         setName("QuorumPeer" + "[myid=" + getId() + "]" +
@@ -1027,9 +1013,15 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                     LOG.info("LEADING");
                     // 领导者
                     try {
-                        setLeader(makeLeader(logFactory));
-                        // 主要就是开启LearnerHandler线程
-                        leader.lead();
+                        //makeLeader() 由这个方法创建了一个Leader的封装类
+                        Leader leader = makeLeader(logFactory);
+                        setLeader(leader);
+                        //创建了StateSummary对象
+                        //这个对象封装了zxid以及currentEpoch, 其中zxid就是最后一次和znode相关的事务id,后者是当前的epoch 它有64位,高32位标记是第几代Leader,后32位是当前代leader提交的事务次数,Follower只识别高版本的前32位为Leader
+                        //针对每一个Learner都开启了一条新的线程LearnerCnxAcceptor,这条线程负责Leader和Learner(Observer+Follower)之间的IO交流
+                        //在LearnerCnxAcceptor的run()方法中,只要有新的连接来了,新开启了一条新的线程,LearnerHander,由他负责Leader中接受每一个参议员的packet,以及监听新连接的到来
+                        //leader启动...
+                        this.leader.lead();
                         setLeader(null);
                     } catch (Exception e) {
                         LOG.warn("Unexpected exception",e);
