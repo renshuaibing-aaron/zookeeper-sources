@@ -214,7 +214,8 @@ public class Learner {
     
     /**
      * Establish a connection with the Leader found by findLeader. Retries
-     * 5 times before giving up. 
+     * 5 times before giving up.
+     * 尝试五次和Leader建立连接,重试五次后放弃
      * @param addr - the address of the Leader to connect to.
      * @throws IOException <li>if the socket connection fails on the 5th attempt</li>
      * <li>if there is an authentication failure while connecting to leader</li>
@@ -254,7 +255,8 @@ public class Learner {
     
     /**
      * Once connected to the leader, perform the handshake protocol to
-     * establish a following / observing connection. 
+     * establish a following / observing connection.
+     * Follower向Leader发送注册消息
      * @param pktType
      * @return the zxid the Leader sends for synchronization purposes.
      * @throws IOException
@@ -276,7 +278,8 @@ public class Learner {
         BinaryOutputArchive boa = BinaryOutputArchive.getArchive(bsid);
         boa.writeRecord(li, "LearnerInfo");
         qp.setData(bsid.toByteArray());
-        
+
+        //  往leader发送数据
         writePacket(qp, true);
         readPacket(qp);        
         final long newEpoch = ZxidUtils.getEpochFromZxid(qp.getZxid());

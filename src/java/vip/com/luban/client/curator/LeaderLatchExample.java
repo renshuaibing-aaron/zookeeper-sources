@@ -9,14 +9,6 @@ import org.apache.curator.retry.RetryNTimes;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-/**
- * *************书山有路勤为径***************
- * 鲁班学院
- * 往期资料加木兰老师  QQ: 2746251334
- * VIP课程加安其拉老师 QQ: 3164703201
- * 讲师：周瑜老师
- * *************学海无涯苦作舟***************
- */
 public class LeaderLatchExample {
     // 这种方式用的临时节点
 

@@ -1,0 +1,9 @@
+zookeeper请求处理的过程
+
+1.follower接受请求，解析请求
+2.follower通过FollowerRequestProcessor将请求转发给leader
+3.leader接收请求
+4.leader发送proposal给follower
+5.follower收到请求记录txlog、snapshot
+6.follower发送ack给leader
+7.leader收到ack后进行commit，并且通知所有的learner，发送commit packet给所有的learner

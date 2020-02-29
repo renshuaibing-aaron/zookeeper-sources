@@ -211,6 +211,7 @@ public class FileTxnLog implements TxnLog {
 
         if (logStream==null) {
            if(LOG.isInfoEnabled()){
+               System.out.println("================");
                 LOG.info("Creating new log file: " + Util.makeLogName(hdr.getZxid()));
            }
 

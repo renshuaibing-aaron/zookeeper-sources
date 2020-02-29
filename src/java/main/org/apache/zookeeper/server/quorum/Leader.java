@@ -302,20 +302,32 @@ public class Leader {
             super("LearnerCnxAcceptor-" + ss.getLocalSocketAddress());
         }
 
+        /**
+         * 在Leader中等待建立连接, 每当向上面有客户端请求和Leader建立连接,
+         * 就在如下的run()逻辑中的LearnerHandler()为每一条新的连接开启一条新的线程
+         */
         @Override
         public void run() {
             try {
                 while (!stop) {
+                    //  下面的主要逻辑就是，在当前线程中轮询，只要有一条连接进来就单独开启一条线程（LearnerHandler）
                     try{
+
+                        //  从serversocket中获取连接
                         Socket s = ss.accept();
                         // start with the initLimit, once the ack is processed
                         // in LearnerHandler switch to the syncLimit
+
+                        //   从initlimit开始，在learnerhandler中处理ack之后，切换到synclimit
                         s.setSoTimeout(self.tickTime * self.initLimit);
                         s.setTcpNoDelay(nodelay);
 
+                        //  读取socket中的数据
                         BufferedInputStream is = new BufferedInputStream(
                                 s.getInputStream());
+
                         // 除开Leader服务器，其他服务器都会与Leader建立连接，这个时候都会新建出一个LearnerHandler线程
+                        //  创建处理所有leanner信息的 handler，他也线程类
                         LearnerHandler fh = new LearnerHandler(s, is, Leader.this);
                         fh.start();
                     } catch (SocketException e) {
@@ -371,12 +383,17 @@ public class Leader {
             zk.loadData();
 
             //   创建了  封装有状态比较逻辑的对象
+            //这个对象封装了zxid以及currentEpoch, 其中zxid就是最后一次和znode相关的事务id,后者是当前的epoch 它有64位,高32位标记是第几代Leader,
+            // 后32位是当前代leader提交的事务次数,Follower只识别高版本的前32位为Leader
             leaderStateSummary = new StateSummary(self.getCurrentEpoch(), zk.getLastProcessedZxid());
 
             // Start thread that waits for connection requests from 
             // new followers.
-            //   创建一个新的线程,为了新的 followers 来连接
+            // 针对每一个Learner都开启了一条新的线程LearnerCnxAcceptor,这条线程负责Leader和Learner(Observer+Follower)之间的IO交流
             cnxAcceptor = new LearnerCnxAcceptor();
+
+            //在LearnerCnxAcceptor的run()方法中,只要有新的连接来了,新开启了一条新的线程,LearnerHander,
+            // 由他负责Leader中接受每一个参议员的packet,以及监听新连接的到来
             cnxAcceptor.start();
             
             readyToStart = true;
@@ -853,6 +870,17 @@ public class Leader {
     }
     // VisibleForTesting
     protected Set<Long> connectingFollowers = new HashSet<Long>();
+
+
+    /**
+     * 里面使用了过半检查机制,不满足半数检验就会wait(), 那什么时候唤醒呢?
+     * 其实只要集群中再有其他的Follower启动,会重复执行以上的逻辑,再次来到这个方法进行半数检验,就有可能唤醒
+     * @param sid
+     * @param lastAcceptedEpoch
+     * @return
+     * @throws InterruptedException
+     * @throws IOException
+     */
     public long getEpochToPropose(long sid, long lastAcceptedEpoch) throws InterruptedException, IOException {
         synchronized(connectingFollowers) {
             if (!waitingForNewEpoch) {

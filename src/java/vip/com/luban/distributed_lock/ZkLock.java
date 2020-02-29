@@ -17,6 +17,7 @@ public class ZkLock implements Lock {
 
     private ThreadLocal<String> CURRENT_NODE = new ThreadLocal<String>();
 
+    @Override
     public void lock() {
 
         init();
@@ -33,6 +34,7 @@ public class ZkLock implements Lock {
         if (zk.get() == null) {
             try {
                 zk.set(new ZooKeeper("localhost:2181", 3000, new Watcher() {
+                    @Override
                     public void process(WatchedEvent watchedEvent) {
                         // ...
                     }
@@ -43,6 +45,7 @@ public class ZkLock implements Lock {
         }
     }
 
+    @Override
     public boolean tryLock() {
 
         String nodeName = LOCK_NAME + "/zk_";
@@ -69,6 +72,7 @@ public class ZkLock implements Lock {
 
                 final CountDownLatch countDownLatch = new CountDownLatch(1);
                 zk.get().exists(LOCK_NAME + "/" + prevNodeName, new Watcher() {
+                    @Override
                     public void process(WatchedEvent watchedEvent) {
                         if (Event.EventType.NodeDeleted.equals(watchedEvent.getType())) {
                             countDownLatch.countDown();
@@ -91,6 +95,7 @@ public class ZkLock implements Lock {
         return false;
     }
 
+    @Override
     public void unlock() {
 
         try {
@@ -106,14 +111,17 @@ public class ZkLock implements Lock {
     }
 
 
+    @Override
     public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
         return false;
     }
 
+    @Override
     public void lockInterruptibly() throws InterruptedException {
 
     }
 
+    @Override
     public Condition newCondition() {
         return null;
     }

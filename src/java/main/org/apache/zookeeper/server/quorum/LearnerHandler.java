@@ -307,14 +307,19 @@ public class LearnerHandler extends ZooKeeperThread {
             oa = BinaryOutputArchive.getArchive(bufferedOutput);
 
             QuorumPacket qp = new QuorumPacket();
+            //  读取follower发送过来的数据
             ia.readRecord(qp, "packet");
+
+            //  第一次Follower发送的注册请求的header = Leader.FOLLOWERINFO
+            //  leader 遇到非FOLLOWERINFO的 和 OBSERVERINFO的消息直接返回
             if(qp.getType() != Leader.FOLLOWERINFO && qp.getType() != Leader.OBSERVERINFO){
             	LOG.error("First packet " + qp.toString()
                         + " is not FOLLOWERINFO or OBSERVERINFO!");
                 return;
             }
             byte learnerInfoData[] = qp.getData();
-            if (learnerInfoData != null) { //接收learner发送过来的LearnerInfo,获取sid(serverId)
+            //接收learner发送过来的LearnerInfo,获取sid(serverId)
+            if (learnerInfoData != null) {
             	if (learnerInfoData.length == 8) {
             		ByteBuffer bbsid = ByteBuffer.wrap(learnerInfoData);
             		this.sid = bbsid.getLong();
@@ -335,15 +340,23 @@ public class LearnerHandler extends ZooKeeperThread {
                   learnerType = LearnerType.OBSERVER;
             }
 
-            //记录当前learner的最新的epoch
+            //获取出Follower中最后一次epoch
             long lastAcceptedEpoch = ZxidUtils.getEpochFromZxid(qp.getZxid());
             
             long peerLastZxid;
             StateSummary ss = null;
             long zxid = qp.getZxid();
-            // 如果learner的epoch比自己高，更新自己的
+            // 如果learner的epoch比自己高，更新自己的  过半检查机制 里面可能会进行等待唤醒机制
+            //  leader用当前方法从众多follower中选出epoch值最大的(而且还会再最大的基础上加1)
+            //  this.getSid()指定的 learner 的myid
+            //  this.getSid()指定的 learner 的lastAcceptedEpoch
             long newEpoch = leader.getEpochToPropose(this.getSid(), lastAcceptedEpoch);
-            
+
+
+            //再往后,leader向Follower发送确认ack,包含最新的epoch+zxid,告诉Follower以后它的事务就从这个zxid开始,这个ack的header= Leader.LEADERINFO
+            //
+            //发送完成之后,leader开始等待Follower的响应的ack
+
             if (this.getVersion() < 0x10000) {
                 // we are going to have to extrapolate the epoch information
                 long epoch = ZxidUtils.getEpochFromZxid(zxid);
@@ -353,7 +366,8 @@ public class LearnerHandler extends ZooKeeperThread {
             } else {
                 byte ver[] = new byte[4];
                 ByteBuffer.wrap(ver).putInt(0x10000);
-                // 发送leader状态,以LEADERINFO的形式
+                //  leader接收到learner的数据之后，给learnner 发送LEADERINFO类型的响应
+                //  返回了最新的epoch
                 QuorumPacket newEpochPacket = new QuorumPacket(Leader.LEADERINFO, ZxidUtils.makeZxid(newEpoch, 0), ver, null);
                 oa.writeRecord(newEpochPacket, "packet");
                 bufferedOutput.flush();
@@ -368,10 +382,13 @@ public class LearnerHandler extends ZooKeeperThread {
 				}
                 ByteBuffer bbepoch = ByteBuffer.wrap(ackEpochPacket.getData());
                 ss = new StateSummary(bbepoch.getInt(), ackEpochPacket.getZxid());
+
+                //  等待learner的响应ack
                 leader.waitForEpochAck(this.getSid(), ss);
             }
             peerLastZxid = ss.getLastZxid();
-            
+
+            // Leader接收到Follower的ack后,开始同步数据的逻辑??
             /* the default to send to the follower */
             int packetToSend = Leader.SNAP;
             long zxidToSend = 0;

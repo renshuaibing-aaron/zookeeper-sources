@@ -1,25 +1,4 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.apache.zookeeper.server.quorum;
-
-import java.io.IOException;
-import java.net.InetSocketAddress;
 
 import org.apache.jute.Record;
 import org.apache.zookeeper.common.Time;
@@ -27,6 +6,8 @@ import org.apache.zookeeper.server.quorum.QuorumPeer.QuorumServer;
 import org.apache.zookeeper.server.util.SerializeUtils;
 import org.apache.zookeeper.server.util.ZxidUtils;
 import org.apache.zookeeper.txn.TxnHeader;
+
+import java.io.IOException;
 
 /**
  * This class has the control logic for the Follower.
@@ -54,6 +35,10 @@ public class Follower extends Learner{
     }
 
     /**
+     * 和Leader建立起连接
+     * registerWithLeader()注册进Leader
+     * syncWithLeader()从Leader中同步数据并完成启动
+     * 在while(true){...}中接受leader发送过来的packet,处理packet
      * the main method called by the follower to follow the leader
      *
      * @throws InterruptedException
@@ -67,10 +52,16 @@ public class Follower extends Learner{
         self.end_fle = 0;
         fzk.registerJMX(new FollowerBean(this, zk), self.jmxLocalPeerBean);
         try {
-            QuorumServer leaderServer = findLeader();            
+            //  找出LeaderServer
+            QuorumServer leaderServer = findLeader();
             try {
-                connectToLeader(leaderServer.addr, leaderServer.hostname); // 连接leader
-                long newEpochZxid = registerWithLeader(Leader.FOLLOWERINFO); // 发送
+                //  和Leader建立连接
+                connectToLeader(leaderServer.addr, leaderServer.hostname);
+
+                //  注册在leader上（会往leader上发送数据）
+                // 这个Epoch代表当前是第几轮选举leader， 这个值给leader使用，
+                // 由leader从接收到的最大的epoch中选出最大的，然后统一所有learner中的epoch值
+                long newEpochZxid = registerWithLeader(Leader.FOLLOWERINFO);
 
                 //check to see if the leader zxid is lower than ours
                 //this should never happen but is just a safety check
@@ -80,10 +71,16 @@ public class Follower extends Learner{
                             + " is less than our accepted epoch " + ZxidUtils.zxidToString(self.getAcceptedEpoch()));
                     throw new IOException("Error: Epoch of leader is lower");
                 }
-                syncWithLeader(newEpochZxid);    // 完成了数据同于，一起服务器初始化，可以处理请求了
+
+                //  从leader同步数据， 同时也是在这个方法中完成初始化启动的
+                syncWithLeader(newEpochZxid);
                 QuorumPacket qp = new QuorumPacket();
+
+                //  在follower中开启无线循环， 不停的接收服务端的pakcet，然后处理packet
                 while (this.isRunning()) {
                     readPacket(qp);
+
+                    //  (接受leader发送的提议)
                     processPacket(qp);
                 }
             } catch (Exception e) {
@@ -93,12 +90,12 @@ public class Follower extends Learner{
                 } catch (IOException e1) {
                     e1.printStackTrace();
                 }
-    
+
                 // clear pending revalidations
                 pendingRevalidations.clear();
             }
         } finally {
-            zk.unregisterJMX((Learner)this);
+            zk.unregisterJMX((Learner) this);
         }
     }
 
