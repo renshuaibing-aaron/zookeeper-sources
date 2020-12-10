@@ -72,6 +72,8 @@ import org.slf4j.LoggerFactory;
  * </pre>
  *
  * The request for the current leader will consist solely of an xid: int xid;
+ *
+ * 集群启动的类
  */
 public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider {
     private static final Logger LOG = LoggerFactory.getLogger(QuorumPeer.class);
@@ -87,9 +89,9 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     // issues. Refer https://issues.apache.org/jira/browse/ZOOKEEPER-2712
     private boolean authInitialized = false;
 
-    /* ZKDatabase is a top level member of quorumpeer 
+    /* ZKDatabase is a top level member of quorumpeer
      * which will be used in all the zookeeperservers
-     * instantiated later. Also, it is created once on 
+     * instantiated later. Also, it is created once on
      * bootup and only thrown away in case of a truncate
      * message from the leader
      */
@@ -110,7 +112,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             this.addr = addr;
             this.electionAddr = null;
         }
-        
+
         private QuorumServer(long id, InetSocketAddress addr,
                     InetSocketAddress electionAddr, LearnerType type) {
             this.id = id;
@@ -118,7 +120,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             this.electionAddr = electionAddr;
             this.type = type;
         }
-        
+
         public QuorumServer(long id, String hostname,
                             Integer port, Integer electionPort,
                             LearnerType type) {
@@ -197,14 +199,14 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
          *
          * @exception UnknownHostException
          */
-        public InetAddress getReachableAddress(String hostname, int timeout) 
+        public InetAddress getReachableAddress(String hostname, int timeout)
                 throws UnknownHostException {
             InetAddress[] addresses = InetAddress.getAllByName(hostname);
             for (InetAddress a : addresses) {
                 try {
                     if (a.isReachable(timeout)) {
                         return a;
-                    } 
+                    }
                 } catch (IOException e) {
                     LOG.warn("IP address {} is unreachable", a);
                 }
@@ -216,7 +218,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         public InetSocketAddress addr;
 
         public InetSocketAddress electionAddr;
-        
+
         public String hostname;
 
         public int port=2888;
@@ -224,7 +226,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         public int electionPort=-1;
 
         public long id;
-        
+
         public LearnerType type = LearnerType.PARTICIPANT;
     }
 
@@ -235,14 +237,14 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     public enum ServerState {
         LOOKING, FOLLOWING, LEADING, OBSERVING;
     }
-    
+
     /*
      * A peer can either be participating, which implies that it is willing to
      * both vote in instances of consensus and to elect or become a Leader, or
      * it may be observing in which case it isn't.
-     * 
-     * We need this distinction to decide which ServerState to move to when 
-     * conditions change (e.g. which state to become after LOOKING). 
+     *
+     * We need this distinction to decide which ServerState to move to when
+     * conditions change (e.g. which state to become after LOOKING).
      */
     // PARTICIPANT,能够参与一致性的投票，以及选举leader
     // OBSERVER，只能观察
@@ -250,29 +252,29 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     public enum LearnerType {
         PARTICIPANT, OBSERVER;
     }
-    
+
     /*
      * To enable observers to have no identifier, we need a generic identifier
      * at least for QuorumCnxManager. We use the following constant to as the
-     * value of such a generic identifier. 
+     * value of such a generic identifier.
      */
-    
+
     static final long OBSERVER_ID = Long.MAX_VALUE;
 
     /*
      * Record leader election time
      */
     public long start_fle, end_fle;
-    
+
     /*
      * Default value of peer is participant
      */
     private LearnerType learnerType = LearnerType.PARTICIPANT;
-    
+
     public LearnerType getLearnerType() {
         return learnerType;
     }
-    
+
     /**
      * Sets the LearnerType both in the QuorumPeer and in the peerMap
      */
@@ -281,10 +283,10 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         if (quorumPeers.containsKey(this.myid)) {
             this.quorumPeers.get(myid).type = p;
         } else {
-            LOG.error("Setting LearnerType to " + p + " but " + myid 
+            LOG.error("Setting LearnerType to " + p + " but " + myid
                     + " not in QuorumPeers. ");
         }
-        
+
     }
     /**
      * The servers that make up the cluster
@@ -294,13 +296,13 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     public int getQuorumSize(){
         return getVotingView().size();
     }
-    
+
     /**
-     * QuorumVerifier implementation; default (majority). 
+     * QuorumVerifier implementation; default (majority).
      */
-    
+
     private QuorumVerifier quorumConfig;
-    
+
     /**
      * My id
      */
@@ -318,20 +320,20 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
      * This is who I think the leader currently is.
      */
     volatile private Vote currentVote;
-    
+
     /**
      * ... and its counterpart for backward compatibility
      */
     volatile private Vote bcVote;
-        
+
     public synchronized Vote getCurrentVote(){
         return currentVote;
     }
-       
+
     public synchronized void setCurrentVote(Vote v){
         currentVote = v;
     }
-    
+
     synchronized Vote getBCVote() {
         if (bcVote == null) {
             return currentVote;
@@ -343,7 +345,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     synchronized void setBCVote(Vote v) {
         bcVote = v;
     }
-    
+
     volatile boolean running = true;
 
     /**
@@ -373,7 +375,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
      * an acknowledgment
      */
     protected int syncLimit;
-    
+
     /**
      * Enables/Disables sync request processor. This option is enabled
      * by default and is to be used with observers.
@@ -444,8 +446,8 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     /**
      * @deprecated As of release 3.4.0, this class has been deprecated, since
      * it is used with one of the udp-based versions of leader election, which
-     * we are also deprecating. 
-     * 
+     * we are also deprecating.
+     *
      * This class simply responds to requests for the current leader of this
      * node.
      * <p>
@@ -463,7 +465,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         }
 
         volatile boolean running = true;
-        
+
         @Override
         public void run() {
             try {
@@ -509,7 +511,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                             break;
                         case OBSERVING:
                             // Do nothing, Observers keep themselves to
-                            // themselves. 
+                            // themselves.
                             break;
                         }
                         packet.setData(b);
@@ -563,26 +565,26 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         quorumStats = new QuorumStats(this);
         initialize();
     }
-    
-   
+
+
     /**
      * For backward compatibility purposes, we instantiate QuorumMaj by default.
      */
-    
+
     public QuorumPeer(Map<Long, QuorumServer> quorumPeers, File dataDir,
             File dataLogDir, int electionType,
             long myid, int tickTime, int initLimit, int syncLimit,
             ServerCnxnFactory cnxnFactory) throws IOException {
-        this(quorumPeers, dataDir, dataLogDir, electionType, myid, tickTime, 
-        		initLimit, syncLimit, false, cnxnFactory, 
+        this(quorumPeers, dataDir, dataLogDir, electionType, myid, tickTime,
+        		initLimit, syncLimit, false, cnxnFactory,
         		new QuorumMaj(countParticipants(quorumPeers)));
     }
-    
+
     public QuorumPeer(Map<Long, QuorumServer> quorumPeers, File dataDir,
             File dataLogDir, int electionType,
             long myid, int tickTime, int initLimit, int syncLimit,
             boolean quorumListenOnAllIPs,
-            ServerCnxnFactory cnxnFactory, 
+            ServerCnxnFactory cnxnFactory,
             QuorumVerifier quorumConfig) throws IOException {
         this();
         this.cnxnFactory = cnxnFactory;
@@ -623,33 +625,47 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     }
 
     /**
-     * 这个类本身就是个线程类
+     * 这个类本身就是个线程类 这里可以看出
+     * todo  这里进行重写  所以要明白 这个线程的run方法是什么时候启动的? 是这个方法里面的super.start()启动的
      */
     @Override
     public synchronized void start() {
-        // 从磁盘中加载数据到内存中
+
+        System.out.println("【集群节点启动】");
+        // 从磁盘中加载数据到内存中  这里加载什么数据？todo 加载数据文件，获取 lastProcessedZxid, currentEpoch，acceptedEpoch
         loadDataBase();
         // 开启读取数据线程
-        //  启动上下文的这个工厂，他是个线程类, 接受客户端的请求
+        //  启动上下文的这个工厂，他是个线程类, 接受客户端的请求 NIOServerCnxnFactory
         cnxnFactory.start();
+
         // 进行领导者选举，确定服务器的角色，再针对不同的服务器角色进行初始化
         //第三个startLeaderElection();开启leader的选举工作, 但是其实他是初始化了一系列的辅助类,用来辅助leader的选举,并非真正在选举
         //
         //当前类,quorumPeer继承了ZKThread,它本身就是一个线程类,super.start();就是启动它的run方法,在他的Run方法中有一个while循环,
         // 一开始在程序启动的阶段,所有的节点的默认值都是Looking,于是会进入这个分支中,在这个分之中会进行真正的leader选举工作
+        //todo 开始 leader 选举; 会相继创建选举算法的实现，创建当前节点与集群中其他节点选举通信的网络IO，并启动相应工作线程
         startLeaderElection();
-        // 本类的run方法 确定服务器的角色, 启动的就是当前类的run方法在900行
+
+
+        // 本类的run方法 确定服务器的角色, 启动的就是当前类的run方法在900行 启动 QuorumPeer 线程，监听当前节点服务状态
         super.start();
     }
 
+    /**
+     *在 loadDataBase 方法中，ZK 会通过加载数据文件获取 lastProcessedZxid ,
+     *  并通过读取 currentEpoch , acceptedEpoch 文件来获取相对应的值；
+     * 若上述两文件不存在，则以 lastProcessedZxid 的高 32 位作为 currentEpoch , acceptedEpoch 值并写入对应文件中。
+     */
     private void loadDataBase() {
         File updating = new File(getTxnFactory().getSnapDir(),
                                  UPDATING_EPOCH_FILENAME);
+        long lastProcessedZxidTest;
 		try {
             zkDb.loadDataBase();
 
             // load the epochs
             long lastProcessedZxid = zkDb.getDataTree().lastProcessedZxid;
+            lastProcessedZxidTest=lastProcessedZxid;
     		long epochOfZxid = ZxidUtils.getEpochFromZxid(lastProcessedZxid);
             try {
             	currentEpoch = readLongFromFile(CURRENT_EPOCH_FILENAME);
@@ -696,10 +712,14 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             LOG.error("Unable to load database on disk", ie);
             throw new RuntimeException("Unable to run quorum server ", ie);
         }
+
+        System.out.println("【初始化获取：lastProcessedZxid】"+lastProcessedZxidTest);
+        System.out.println("【初始化获取：currentEpoch】"+currentEpoch);
+        System.out.println("【初始化获取：acceptedEpoch】"+acceptedEpoch);
 	}
 
     ResponderThread responder;
-    
+
     synchronized public void stopLeaderElection() {
         responder.running = false;
         responder.interrupt();
@@ -716,15 +736,18 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             //所有节点启动的初始状态都是LOOKING，因此这里都会是创建一张投自己为Leader的票
             //  创建了一个封装了投票结果对象   包含myid 最大的zxid 第几轮Leader
             //  先投票给自己
+            System.out.println("【投票】myid"+myid+" LastLoggedZxid"+getLastLoggedZxid()+" CurrentEpoch"+getCurrentEpoch() );
     		currentVote = new Vote(myid, getLastLoggedZxid(), getCurrentEpoch());
     	} catch(IOException e) {
     		RuntimeException re = new RuntimeException(e.getMessage());
     		re.setStackTrace(e.getStackTrace());
     		throw re;
     	}
+
+        // 从集群中节点列表，查找当前节点与其他进行信息同步的地址
         for (QuorumServer p : getView().values()) {
             if (p.id == myid) {
-                myQuorumAddr = p.addr;
+                myQuorumAddr = p.addr;  //记录自己的Ip
                 break;
             }
         }
@@ -744,7 +767,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         //  创建一个领导者选举的算法,这个算法还剩下一个唯一的实现 快速选举
         this.electionAlg = createElectionAlgorithm(electionType);
     }
-    
+
     /**
      * Count the number of nodes in the map that could be followers.
      * @param peers
@@ -759,7 +782,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
       }
       return count;
     }
-    
+
     /**
      * This constructor is only used by the existing unit test code.
      * It defaults to FileLogProvider persistence provider.
@@ -774,14 +797,14 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                 ServerCnxnFactory.createFactory(new InetSocketAddress(clientPort), -1),
                 new QuorumMaj(countParticipants(quorumPeers)));
     }
-    
+
     /**
      * This constructor is only used by the existing unit test code.
      * It defaults to FileLogProvider persistence provider.
      */
     public QuorumPeer(Map<Long,QuorumServer> quorumPeers, File snapDir,
             File logDir, int clientPort, int electionAlg,
-            long myid, int tickTime, int initLimit, int syncLimit, 
+            long myid, int tickTime, int initLimit, int syncLimit,
             QuorumVerifier quorumConfig)
         throws IOException
     {
@@ -790,10 +813,10 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                 ServerCnxnFactory.createFactory(new InetSocketAddress(clientPort), -1),
                 quorumConfig);
     }
-    
+
     /**
      * returns the highest zxid that this host has seen
-     * 
+     *
      * @return the highest zxid for this host
      */
     public long getLastLoggedZxid() {
@@ -802,21 +825,21 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         }
         return zkDb.getDataTreeLastProcessedZxid();
     }
-    
+
     public Follower follower;
     public Leader leader;
     public Observer observer;
 
     protected Follower makeFollower(FileTxnSnapLog logFactory) throws IOException {
-        return new Follower(this, new FollowerZooKeeperServer(logFactory, 
+        return new Follower(this, new FollowerZooKeeperServer(logFactory,
                 this,new ZooKeeperServer.BasicDataTreeBuilder(), this.zkDb));
     }
-     
+
     protected Leader makeLeader(FileTxnSnapLog logFactory) throws IOException {
         LeaderZooKeeperServer leaderZooKeeperServer = new LeaderZooKeeperServer(logFactory, this, new ZooKeeperServer.BasicDataTreeBuilder(), this.zkDb);
         return new Leader(this, leaderZooKeeperServer);
     }
-    
+
     protected Observer makeObserver(FileTxnSnapLog logFactory) throws IOException {
         return new Observer(this, new ObserverZooKeeperServer(logFactory,
                 this, new ZooKeeperServer.BasicDataTreeBuilder(), this.zkDb));
@@ -832,7 +855,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
      */
     protected Election createElectionAlgorithm(int electionAlgorithm){
         Election le=null;
-                
+
         //TODO: use a factory rather than a switch
         switch (electionAlgorithm) {
         case 0:
@@ -871,7 +894,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         LOG.debug("Initializing leader election protocol...");
         if (getElectionType() == 0) {
             electionAlg = new LeaderElection(this);
-        }        
+        }
         return electionAlg;  // FastLeaderElection
     }
 
@@ -882,18 +905,19 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     synchronized protected void setFollower(Follower newFollower){
         follower=newFollower;
     }
-    
+
     synchronized protected void setObserver(Observer newObserver){
         observer=newObserver;
     }
 
     synchronized public ZooKeeperServer getActiveServer(){
-        if(leader!=null)
+        if(leader!=null) {
             return leader.zk;
-        else if(follower!=null)
+        } else if(follower!=null) {
             return follower.zk;
-        else if (observer != null)
+        } else if (observer != null) {
             return observer.zk;
+        }
         return null;
     }
 
@@ -902,8 +926,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
      */
     @Override
     public void run() {
-        setName("QuorumPeer" + "[myid=" + getId() + "]" +
-                cnxnFactory.getLocalAddress());
+        setName("QuorumPeer" + "[myid=" + getId() + "]" +  cnxnFactory.getLocalAddress());
 
         LOG.debug("Starting quorum peer");
         try {
@@ -944,20 +967,19 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                 // 本机服务器状态
                 switch (getPeerState()) {
                 case LOOKING:
+                    System.out.println("【服务器处于Looking状态，准备找leader】");
                     LOG.info("LOOKING");
                     // 正在寻找leader
 
                     // 不关心只读服务器
                     if (Boolean.getBoolean("readonlymode.enabled")) {
                         LOG.info("Attempting to start ReadOnlyZooKeeperServer");
-
-
                         // Create read-only server but don't start it immediately
                         final ReadOnlyZooKeeperServer roZk = new ReadOnlyZooKeeperServer(
                                 logFactory, this,
                                 new ZooKeeperServer.BasicDataTreeBuilder(),
                                 this.zkDb);
-    
+
                         // Instead of starting roZk immediately, wait some grace
                         // period before we decide we're partitioned.
                         //
@@ -965,6 +987,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                         // changes in each of election strategy classes which is
                         // unnecessary code coupling.
                         Thread roZkMgr = new Thread() {
+                            @Override
                             public void run() {
                                 try {
                                     // lower-bound grace period to 2 secs
@@ -997,7 +1020,9 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                         try {
                             // 兼容性代码
                             setBCVote(null);
-                            setCurrentVote(makeLEStrategy().lookForLeader());
+                            Vote vote = makeLEStrategy().lookForLeader();
+                            System.out.println("【选票】"+vote);
+                            setCurrentVote(vote);
                         } catch (Exception e) {
                             LOG.warn("Unexpected exception", e);
                             setPeerState(ServerState.LOOKING);
@@ -1012,7 +1037,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                         setObserver(makeObserver(logFactory));
                         observer.observeLeader();
                     } catch (Exception e) {
-                        LOG.warn("Unexpected exception",e );                        
+                        LOG.warn("Unexpected exception",e );
                     } finally {
                         observer.shutdown();
                         setObserver(null);
@@ -1084,7 +1109,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         if(udpSocket != null) {
             udpSocket.close();
         }
-        
+
         if(getElectionAlg() != null){
             this.interrupt();
         	getElectionAlg().shutdown();
@@ -1106,7 +1131,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     }
 
     /**
-     * Observers are not contained in this view, only nodes with 
+     * Observers are not contained in this view, only nodes with
      * PeerType=PARTICIPANT.
      * 作为参与者的所有server的视图
      */
@@ -1130,17 +1155,17 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
      * Returns only observers, no followers.
      */
     public Map<Long,QuorumPeer.QuorumServer> getObservingView() {
-        Map<Long,QuorumPeer.QuorumServer> ret = 
+        Map<Long,QuorumPeer.QuorumServer> ret =
             new HashMap<Long, QuorumPeer.QuorumServer>();
         Map<Long,QuorumPeer.QuorumServer> view = getView();
-        for (QuorumServer server : view.values()) {            
+        for (QuorumServer server : view.values()) {
             if (server.type == LearnerType.OBSERVER) {
                 ret.put(server.id, server);
             }
-        }        
+        }
         return ret;
     }
-    
+
     /**
      * Check if a node is in the current view. With static membership, the
      * result of this check will never change; only when dynamic membership
@@ -1149,7 +1174,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     public boolean viewContains(Long sid) {
         return this.quorumPeers.containsKey(sid);
     }
-    
+
     /**
      * Only used by QuorumStats at the moment
      */
@@ -1224,7 +1249,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         }
         return fac.getMaxClientCnxnsPerHost();
     }
-    
+
     /** minimum session timeout in milliseconds */
     public int getMinSessionTimeout() {
         return minSessionTimeout == -1 ? tickTime * 2 : minSessionTimeout;
@@ -1268,28 +1293,28 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     public int getTick() {
         return tick.get();
     }
-    
+
     /**
      * Return QuorumVerifier object
      */
-    
+
     public QuorumVerifier getQuorumVerifier(){
         return quorumConfig;
-        
+
     }
-    
+
     public void setQuorumVerifier(QuorumVerifier quorumConfig){
        this.quorumConfig = quorumConfig;
     }
-    
+
     /**
      * Get an instance of LeaderElection
      */
-        
+
     public Election getElectionAlg(){
         return electionAlg;
     }
-        
+
     /**
      * Get the synclimit
      */
@@ -1303,30 +1328,30 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     public void setSyncLimit(int syncLimit) {
         this.syncLimit = syncLimit;
     }
-    
-    
+
+
     /**
      * The syncEnabled can also be set via a system property.
      */
     public static final String SYNC_ENABLED = "zookeeper.observer.syncEnabled";
-    
+
     /**
      * Return syncEnabled.
-     * 
+     *
      * @return
      */
     public boolean getSyncEnabled() {
         if (System.getProperty(SYNC_ENABLED) != null) {
-            LOG.info(SYNC_ENABLED + "=" + Boolean.getBoolean(SYNC_ENABLED));   
+            LOG.info(SYNC_ENABLED + "=" + Boolean.getBoolean(SYNC_ENABLED));
             return Boolean.getBoolean(SYNC_ENABLED);
-        } else {        
+        } else {
             return syncEnabled;
         }
     }
-    
+
     /**
      * Set syncEnabled.
-     * 
+     *
      * @param syncEnabled
      */
     public void setSyncEnabled(boolean syncEnabled) {
@@ -1373,11 +1398,11 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
 
     public void setClientPortAddress(InetSocketAddress addr) {
     }
- 
+
     public void setTxnFactory(FileTxnSnapLog factory) {
         this.logFactory = factory;
     }
-    
+
     public FileTxnSnapLog getTxnFactory() {
         return this.logFactory;
     }
@@ -1446,7 +1471,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         try {
             bw.write(Long.toString(value));
             bw.flush();
-            
+
             out.flush();
         } catch (IOException e) {
             LOG.error("Failed to write new file " + file, e);
@@ -1470,25 +1495,24 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
 		}
 		return currentEpoch;
 	}
-	
+
 	public long getAcceptedEpoch() throws IOException {
 		if (acceptedEpoch == -1) {
 			acceptedEpoch = readLongFromFile(ACCEPTED_EPOCH_FILENAME);
 		}
 		return acceptedEpoch;
 	}
-	
+
 	public void setCurrentEpoch(long e) throws IOException {
 		currentEpoch = e;
 		writeLongToFile(CURRENT_EPOCH_FILENAME, e);
-		
+
 	}
-	
+
 	public void setAcceptedEpoch(long e) throws IOException {
 		acceptedEpoch = e;
 		writeLongToFile(ACCEPTED_EPOCH_FILENAME, e);
 	}
-    ServerCnxn
     /**
      * Updates leader election info to avoid inconsistencies when
      * a new server tries to join the ensemble.

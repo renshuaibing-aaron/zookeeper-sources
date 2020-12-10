@@ -1,4 +1,4 @@
-package com.luban.client.curator;
+package com.aaron.client.curator;
 
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -6,7 +6,6 @@ import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.framework.state.ConnectionStateListener;
 import org.apache.curator.retry.RetryNTimes;
 import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.ZooDefs;
 
 import java.util.concurrent.TimeUnit;
 
@@ -30,7 +29,7 @@ public class CuratorSessionExample {
 
         client.start();
 
-        client.create().withMode(CreateMode.EPHEMERAL).forPath("/luban-e", "1".getBytes());
+        client.create().withMode(CreateMode.EPHEMERAL).forPath("/aaron-e", "1".getBytes());
 
         client.getConnectionStateListenable().addListener(new ConnectionStateListener() {
             @Override

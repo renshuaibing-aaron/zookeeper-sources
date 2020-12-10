@@ -17,7 +17,7 @@ public class Follower extends Learner{
     private long lastQueued;
     // This is the same object as this.zk, but we cache the downcast op
     final FollowerZooKeeperServer fzk;
-    
+
     Follower(QuorumPeer self,FollowerZooKeeperServer zk) {
         this.self = self;
         this.zk=zk;
@@ -106,8 +106,8 @@ public class Follower extends Learner{
      */
     protected void processPacket(QuorumPacket qp) throws IOException{
         switch (qp.getType()) {
-        case Leader.PING:            
-            ping(qp);            
+        case Leader.PING:
+            ping(qp);
             break;
         case Leader.PROPOSAL:
             // 接受到提议，直接持久化，如果持久化成功了
@@ -123,6 +123,7 @@ public class Follower extends Learner{
             fzk.logRequest(hdr, txn);
             break;
         case Leader.COMMIT:
+            System.out.println("【follower收到commit】");
             fzk.commit(qp.getZxid());
             break;
         case Leader.UPTODATE:
@@ -153,7 +154,7 @@ public class Follower extends Learner{
         }
         return -1;
     }
-    
+
     /**
      * The zxid of the last operation queued
      * @return zxid
@@ -163,7 +164,7 @@ public class Follower extends Learner{
     }
 
     @Override
-    public void shutdown() {    
+    public void shutdown() {
         LOG.info("shutdown called", new Exception("shutdown Follower"));
         super.shutdown();
     }

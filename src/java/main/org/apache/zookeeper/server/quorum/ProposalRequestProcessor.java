@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 将请求转发给AckRequestProcessor和SyncRequestProcessor。
  * This RequestProcessor simply forwards requests to an AckRequestProcessor and
  * SyncRequestProcessor.
  */
@@ -16,7 +17,7 @@ public class ProposalRequestProcessor implements RequestProcessor {
         LoggerFactory.getLogger(ProposalRequestProcessor.class);
 
     LeaderZooKeeperServer zks;
-    
+
     RequestProcessor nextProcessor;
 
     SyncRequestProcessor syncProcessor;
@@ -28,28 +29,29 @@ public class ProposalRequestProcessor implements RequestProcessor {
         AckRequestProcessor ackProcessor = new AckRequestProcessor(zks.getLeader());
         syncProcessor = new SyncRequestProcessor(zks, ackProcessor);
     }
-    
+
     /**
      * initialize this processor
      */
     public void initialize() {
         syncProcessor.start();
     }
-    
+
+    @Override
     public void processRequest(Request request) throws RequestProcessorException {
         // LOG.warn("Ack>>> cxid = " + request.cxid + " type = " +
         // request.type + " id = " + request.sessionId);
         // request.addRQRec(">prop");
-                
-        
-        /* In the following IF-THEN-ELSE block, we process syncs on the leader. 
+
+
+        /* In the following IF-THEN-ELSE block, we process syncs on the leader.
          * If the sync is coming from a follower, then the follower
          * handler adds it to syncHandler. Otherwise, if it is a client of
-         * the leader that issued the sync command, then syncHandler won't 
-         * contain the handler. In this case, we add it to syncHandler, and 
+         * the leader that issued the sync command, then syncHandler won't
+         * contain the handler. In this case, we add it to syncHandler, and
          * call processRequest on the next processor.
          */
-        
+
         if(request instanceof LearnerSyncRequest){
             zks.getLeader().processSync((LearnerSyncRequest)request);
         } else {
@@ -66,6 +68,7 @@ public class ProposalRequestProcessor implements RequestProcessor {
         }
     }
 
+    @Override
     public void shutdown() {
         LOG.info("Shutting down");
         nextProcessor.shutdown();

@@ -1,20 +1,4 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+
 
 package org.apache.zookeeper.server;
 
@@ -28,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 发送Sync请求的处理器
  * This RequestProcessor logs requests to disk. It batches the requests to do
  * the io efficiently. The request is not passed to the next RequestProcessor
  * until its log has been synced to disk.
@@ -65,7 +50,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
      * The number of log entries to log before starting a snapshot
      */
     private static int snapCount = ZooKeeperServer.getSnapCount();
-    
+
     /**
      * The number of log entries before rolling the log, number
      * is chosen randomly
@@ -82,7 +67,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
         this.nextProcessor = nextProcessor;
         running = true;
     }
-    
+
     /**
      * used by tests to check for changing
      * snapcounts
@@ -100,13 +85,13 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
     public static int getSnapCount() {
         return snapCount;
     }
-    
+
     /**
-     * Sets the value of randRoll. This method 
+     * Sets the value of randRoll. This method
      * is here to avoid a findbugs warning for
      * setting a static variable in an instance
-     * method. 
-     * 
+     * method.
+     *
      * @param roll
      */
     private static void setRandRoll(int roll) {
@@ -155,6 +140,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
                             } else {
                                 // 没有开启快照线程的话就单独开启一个线程，这个线程里没有循环，所以只会执行一次
                                 snapInProcess = new ZooKeeperThread("Snapshot Thread") {
+                                        @Override
                                         public void run() {
                                             try {
                                                 zks.takeSnapshot();
@@ -214,6 +200,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
         }
     }
 
+    @Override
     public void shutdown() {
         LOG.info("Shutting down");
         queuedRequests.add(requestOfDeath);
@@ -236,6 +223,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
         }
     }
 
+    @Override
     public void processRequest(Request request) {
         // request.addRQRec(">sync");
         queuedRequests.add(request);

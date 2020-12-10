@@ -14,7 +14,7 @@ import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
 
 /**
- * This class starts and runs a standalone ZooKeeperServer.
+ * This CLASS starts and runs a standalone ZooKeeperServer.
  */
 @InterfaceAudience.Public
 public class ZooKeeperServerMain {

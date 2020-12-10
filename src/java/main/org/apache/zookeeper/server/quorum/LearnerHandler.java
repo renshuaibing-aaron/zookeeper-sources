@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
 public class LearnerHandler extends ZooKeeperThread {
     private static final Logger LOG = LoggerFactory.getLogger(LearnerHandler.class);
 
-    protected final Socket sock;    
+    protected final Socket sock;
 
     public Socket getSocket() {
         return sock;
@@ -54,22 +54,22 @@ public class LearnerHandler extends ZooKeeperThread {
      * on the syncLimit. Once the deadline is past this learner should
      * be considered no longer "sync'd" with the leader. */
     volatile long tickOfNextAckDeadline;
-    
+
     /**
      * ZooKeeper server identifier of this learner
      */
     protected long sid = 0;
-    
+
     long getSid(){
         return sid;
-    }                    
+    }
 
     protected int version = 0x1;
-    
+
     int getVersion() {
     	return version;
     }
-    
+
     /**
      * The packets to be sent to the learner
      */
@@ -234,7 +234,7 @@ public class LearnerHandler extends ZooKeeperThread {
         String type = null;
         String mess = null;
         Record txn = null;
-        
+
         switch (p.getType()) {
         case Leader.ACK:
             type = "ACK";
@@ -244,7 +244,7 @@ public class LearnerHandler extends ZooKeeperThread {
             break;
         case Leader.FOLLOWERINFO:
             type = "FOLLOWERINFO";
-            break;    
+            break;
         case Leader.NEWLEADER:
             type = "NEWLEADER";
             break;
@@ -306,18 +306,19 @@ public class LearnerHandler extends ZooKeeperThread {
             bufferedOutput = new BufferedOutputStream(sock.getOutputStream());
             oa = BinaryOutputArchive.getArchive(bufferedOutput);
 
-            QuorumPacket qp = new QuorumPacket();
+            QuorumPacket quorumPacket = new QuorumPacket();
             //  读取follower发送过来的数据
-            ia.readRecord(qp, "packet");
+            ia.readRecord(quorumPacket, "packet");
 
+            System.out.println("【leader接收到QuorumPacket】"+quorumPacket);
             //  第一次Follower发送的注册请求的header = Leader.FOLLOWERINFO
             //  leader 遇到非FOLLOWERINFO的 和 OBSERVERINFO的消息直接返回
-            if(qp.getType() != Leader.FOLLOWERINFO && qp.getType() != Leader.OBSERVERINFO){
-            	LOG.error("First packet " + qp.toString()
+            if(quorumPacket.getType() != Leader.FOLLOWERINFO && quorumPacket.getType() != Leader.OBSERVERINFO){
+            	LOG.error("First packet " + quorumPacket.toString()
                         + " is not FOLLOWERINFO or OBSERVERINFO!");
                 return;
             }
-            byte learnerInfoData[] = qp.getData();
+            byte learnerInfoData[] = quorumPacket.getData();
             //接收learner发送过来的LearnerInfo,获取sid(serverId)
             if (learnerInfoData != null) {
             	if (learnerInfoData.length == 8) {
@@ -335,17 +336,17 @@ public class LearnerHandler extends ZooKeeperThread {
 
             LOG.info("Follower sid: " + sid + " : info : "
                     + leader.self.quorumPeers.get(sid));
-                        
-            if (qp.getType() == Leader.OBSERVERINFO) {
+
+            if (quorumPacket.getType() == Leader.OBSERVERINFO) {
                   learnerType = LearnerType.OBSERVER;
             }
 
             //获取出Follower中最后一次epoch
-            long lastAcceptedEpoch = ZxidUtils.getEpochFromZxid(qp.getZxid());
-            
+            long lastAcceptedEpoch = ZxidUtils.getEpochFromZxid(quorumPacket.getZxid());
+
             long peerLastZxid;
             StateSummary ss = null;
-            long zxid = qp.getZxid();
+            long zxid = quorumPacket.getZxid();
             // 如果learner的epoch比自己高，更新自己的  过半检查机制 里面可能会进行等待唤醒机制
             //  leader用当前方法从众多follower中选出epoch值最大的(而且还会再最大的基础上加1)
             //  this.getSid()指定的 learner 的myid
@@ -395,9 +396,9 @@ public class LearnerHandler extends ZooKeeperThread {
             long leaderLastZxid = 0;
             /** the packets that the follower needs to get updates from **/
             long updates = peerLastZxid;
-            
-            /* we are sending the diff check if we have proposals in memory to be able to 
-             * send a diff to the 
+
+            /* we are sending the diff check if we have proposals in memory to be able to
+             * send a diff to the
              */
 
             // 加读锁，这段时间内只能读，不能写
@@ -487,7 +488,7 @@ public class LearnerHandler extends ZooKeeperThread {
                 } else {
                     // just let the state transfer happen
                     LOG.debug("proposals is empty");
-                }               
+                }
 
                 LOG.info("Sending " + Leader.getPacketType(packetToSend));
                 // 发送同步数据
@@ -514,21 +515,21 @@ public class LearnerHandler extends ZooKeeperThread {
             // 写发送类型，再发送数据
             oa.writeRecord(new QuorumPacket(packetToSend, zxidToSend, null, null), "packet");
             bufferedOutput.flush();
-            
+
             /* if we are not truncating or sending a diff just send a snapshot */
             if (packetToSend == Leader.SNAP) { //如果发出snap，代表告知learner进行snap方式的数据同步
                 LOG.info("Sending snapshot last zxid of peer is 0x"
-                        + Long.toHexString(peerLastZxid) + " " 
+                        + Long.toHexString(peerLastZxid) + " "
                         + " zxid of leader is 0x"
                         + Long.toHexString(leaderLastZxid)
-                        + "sent zxid of db as 0x" 
+                        + "sent zxid of db as 0x"
                         + Long.toHexString(zxidToSend));
                 // Dump data to peer
                 leader.zk.getZKDatabase().serializeSnapshot(oa); //SNAP恢复就是把当前的db的序列化内容发送出去
                 oa.writeString("BenWasHere", "signature"); //有特定的签名
             }
             bufferedOutput.flush();
-            
+
             // Start sending packets
             new Thread() {
                 public void run() {
@@ -541,25 +542,25 @@ public class LearnerHandler extends ZooKeeperThread {
                     }
                 }
             }.start(); //启动线程，发送消息去同步
-            
+
             /*
-             * Have to wait for the first ACK, wait until 
+             * Have to wait for the first ACK, wait until
              * the leader is ready, and only then we can
              * start processing messages.
              */
-            qp = new QuorumPacket();
-            ia.readRecord(qp, "packet");
-            if(qp.getType() != Leader.ACK){
+            quorumPacket = new QuorumPacket();
+            ia.readRecord(quorumPacket, "packet");
+            if(quorumPacket.getType() != Leader.ACK){
                 LOG.error("Next packet was supposed to be an ACK");
                 return;
             }
             LOG.info("Received NEWLEADER-ACK message from " + getSid());
-            leader.waitForNewLeaderAck(getSid(), qp.getZxid()); //等待有过半参与者返回ACK
+            leader.waitForNewLeaderAck(getSid(), quorumPacket.getZxid()); //等待有过半参与者返回ACK
             // 上面代码之后代表leader与learner直接初始化完成了
 
             // 正常同步开启
             syncLimitCheck.start();
-            
+
             // now that the ack has been processed expect the syncLimit
             // 设置同步时间
             sock.setSoTimeout(leader.self.tickTime * leader.self.syncLimit); //请求阶段的读取超时时间 为 tickTime * syncLimit
@@ -580,15 +581,15 @@ public class LearnerHandler extends ZooKeeperThread {
 
             while (true) { //正常交互，处理learner的请求等
                 // 不停的从ia充获取从Learner发过来的QuorumPacket
-                qp = new QuorumPacket();
-                ia.readRecord(qp, "packet");
+                quorumPacket = new QuorumPacket();
+                ia.readRecord(quorumPacket, "packet");
 
                 long traceMask = ZooTrace.SERVER_PACKET_TRACE_MASK;
-                if (qp.getType() == Leader.PING) {
+                if (quorumPacket.getType() == Leader.PING) {
                     traceMask = ZooTrace.SERVER_PING_TRACE_MASK;
                 }
                 if (LOG.isTraceEnabled()) {
-                    ZooTrace.logQuorumPacket(LOG, traceMask, 'i', qp);
+                    ZooTrace.logQuorumPacket(LOG, traceMask, 'i', quorumPacket);
                 }
                 tickOfNextAckDeadline = leader.self.tick.get() + leader.self.syncLimit;
 
@@ -599,7 +600,7 @@ public class LearnerHandler extends ZooKeeperThread {
                 int type;
 
                 // 处理其他服务器的请求
-                switch (qp.getType()) {
+                switch (quorumPacket.getType()) {
                 case Leader.ACK:
                     // 收到同步ack
                     if (this.learnerType == LearnerType.OBSERVER) {
@@ -607,13 +608,13 @@ public class LearnerHandler extends ZooKeeperThread {
                             LOG.debug("Received ACK from Observer  " + this.sid);
                         }
                     }
-                    syncLimitCheck.updateAck(qp.getZxid());
+                    syncLimitCheck.updateAck(quorumPacket.getZxid());
                     // 提交本地的request
-                    leader.processAck(this.sid, qp.getZxid(), sock.getLocalSocketAddress());
+                    leader.processAck(this.sid, quorumPacket.getZxid(), sock.getLocalSocketAddress());
                     break;
                 case Leader.PING:
                     // Process the touches
-                    ByteArrayInputStream bis = new ByteArrayInputStream(qp
+                    ByteArrayInputStream bis = new ByteArrayInputStream(quorumPacket
                             .getData());
                     DataInputStream dis = new DataInputStream(bis);
                     while (dis.available() > 0) {
@@ -624,7 +625,7 @@ public class LearnerHandler extends ZooKeeperThread {
                     break;
                 case Leader.REVALIDATE:
                     // 重新激活session
-                    bis = new ByteArrayInputStream(qp.getData());
+                    bis = new ByteArrayInputStream(quorumPacket.getData());
                     dis = new DataInputStream(bis);
                     long id = dis.readLong();
                     int to = dis.readInt();
@@ -649,13 +650,13 @@ public class LearnerHandler extends ZooKeeperThread {
                                                  + " is valid: "+ valid);
                     }
                     dos.writeBoolean(valid);
-                    qp.setData(bos.toByteArray());
+                    quorumPacket.setData(bos.toByteArray());
                     // 重新吧这个qp加进去，发给learner
-                    queuedPackets.add(qp);
+                    queuedPackets.add(quorumPacket);
                     break;
                 case Leader.REQUEST:
                     // 这里有一个问题，作为Leanner它是怎么把这个request发出来的，应该要用到QuorumServer中的同步端口
-                    bb = ByteBuffer.wrap(qp.getData());
+                    bb = ByteBuffer.wrap(quorumPacket.getData());
                     sessionId = bb.getLong();
                     cxid = bb.getInt();
                     type = bb.getInt();
@@ -663,17 +664,17 @@ public class LearnerHandler extends ZooKeeperThread {
                     Request si;
                     if(type == OpCode.sync){
                         // 请求同步的请求
-                        si = new LearnerSyncRequest(this, sessionId, cxid, type, bb, qp.getAuthinfo());
+                        si = new LearnerSyncRequest(this, sessionId, cxid, type, bb, quorumPacket.getAuthinfo());
                     } else {
                         // 正常的请求
-                        si = new Request(null, sessionId, cxid, type, bb, qp.getAuthinfo());
+                        si = new Request(null, sessionId, cxid, type, bb, quorumPacket.getAuthinfo());
                     }
                     si.setOwner(this);
                     // 本地提交请求，和单机模式类似了，FinalRequestProcessor中会处理请求
                     leader.zk.submitRequest(si);
                     break;
                 default:
-                    LOG.warn("unexpected quorum packet, type: {}", packetToString(qp));
+                    LOG.warn("unexpected quorum packet, type: {}", packetToString(quorumPacket));
                     break;
                 }
             }
@@ -681,7 +682,7 @@ public class LearnerHandler extends ZooKeeperThread {
             if (sock != null && !sock.isClosed()) {
                 LOG.error("Unexpected exception causing shutdown while sock "
                         + "still open", e);
-            	//close the socket to make sure the 
+            	//close the socket to make sure the
             	//other side can see it being close
             	try {
             		sock.close();
@@ -692,7 +693,7 @@ public class LearnerHandler extends ZooKeeperThread {
         } catch (InterruptedException e) {
             LOG.error("Unexpected exception causing shutdown", e);
         } finally {
-            LOG.warn("******* GOODBYE " 
+            LOG.warn("******* GOODBYE "
                     + (sock != null ? sock.getRemoteSocketAddress() : "<null>")
                     + " ********");
             // 不是一个普通的关闭

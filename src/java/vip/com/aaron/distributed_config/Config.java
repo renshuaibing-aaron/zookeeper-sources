@@ -1,4 +1,4 @@
-package com.luban.distributed_config;
+package com.aaron.distributed_config;
 
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -13,14 +13,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * *************书山有路勤为径***************
- * 鲁班学院
- * 往期资料加木兰老师  QQ: 2746251334
- * VIP课程加安其拉老师 QQ: 3164703201
- * 讲师：周瑜老师
- * *************学海无涯苦作舟***************
- */
 public class Config {
     private static final String CONFIG_PREFIX = "/CONFIG";
 

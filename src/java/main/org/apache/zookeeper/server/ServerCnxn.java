@@ -28,6 +28,7 @@ import org.apache.zookeeper.proto.ReplyHeader;
 import org.apache.zookeeper.proto.RequestHeader;
 
 /**
+ * 接口类型，继承Watcher，表示客户端与服务端的一个连接。
  * Interface to a Server connection - represents a connection from a client
  * to the server.
  */
@@ -35,7 +36,7 @@ public abstract class ServerCnxn implements Stats, Watcher {
     // This is just an arbitrary object to represent requests issued by
     // (aka owned by) this class
     final public static Object me = new Object();
-    
+
     protected ArrayList<Id> authInfo = new ArrayList<Id>();
 
     /**
@@ -345,7 +346,7 @@ public abstract class ServerCnxn implements Stats, Watcher {
     }
 
     protected abstract ServerStats serverStats();
-    
+
     protected final Date established = new Date();
 
     protected final AtomicLong packetsReceived = new AtomicLong();
@@ -380,7 +381,7 @@ public abstract class ServerCnxn implements Stats, Watcher {
     protected long incrPacketsReceived() {
         return packetsReceived.incrementAndGet();
     }
-    
+
     protected void incrOutstandingRequests(RequestHeader h) {
     }
 
@@ -474,7 +475,7 @@ public abstract class ServerCnxn implements Stats, Watcher {
 
     public abstract InetSocketAddress getRemoteSocketAddress();
     public abstract int getInterestOps();
-    
+
     /**
      * Print information about the connection.
      * @param brief iff true prints brief details, otw full detail

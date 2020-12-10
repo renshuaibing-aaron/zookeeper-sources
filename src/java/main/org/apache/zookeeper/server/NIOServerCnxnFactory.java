@@ -200,6 +200,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
         }
     }
 
+    @Override
     public void run() {
         // 如果socket没有关闭掉
         // selector是跟nio有关系的，我们看核心代码
@@ -225,7 +226,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
                                      + " - max is " + maxClientCnxns );
                             sc.close();
                         } else {
-                            LOG.info("Accepted socket connection from "
+                            LOG.info("建立socket连接 Accepted socket connection from "
                                      + sc.socket().getRemoteSocketAddress());
                             sc.configureBlocking(false);
                             SelectionKey sk = sc.register(selector,

@@ -1,4 +1,4 @@
-package com.luban.distributed_lock;
+package com.aaron.distributed_lock;
 
 public class Pay {
 

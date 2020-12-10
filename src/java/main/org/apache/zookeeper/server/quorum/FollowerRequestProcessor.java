@@ -1,21 +1,3 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.apache.zookeeper.server.quorum;
 
 import java.util.concurrent.LinkedBlockingQueue;
@@ -30,6 +12,7 @@ import org.apache.zookeeper.server.ZooKeeperCriticalThread;
 import org.apache.zookeeper.server.ZooTrace;
 
 /**
+ * 将修改了系统状态的请求转发给Leader
  * This RequestProcessor forwards any requests that modify the state of the
  * system to the Leader.
  */
@@ -68,8 +51,9 @@ public class FollowerRequestProcessor extends ZooKeeperCriticalThread implements
                 // We want to queue the request to be processed before we submit
                 // the request to the leader so that we are ready to receive
                 // the response
+                //先把请求提交给CommitProcessor（后面leader发送给follower的commit请求对应到这里）???
                 nextProcessor.processRequest(request);
-                
+
                 // We now ship the request to the leader. As with all
                 // other quorum operations, sync also follows this code
                 // path, but different from others, we need to keep track
@@ -88,6 +72,7 @@ public class FollowerRequestProcessor extends ZooKeeperCriticalThread implements
                 case OpCode.closeSession:
                 case OpCode.multi:
                     // Follower接受到了上诉命令，就会把request发送给leader
+                    System.out.println("【flower接收到命令上传给leader】");  //Learner
                     zks.getFollower().request(request);
                     break;
                 }
@@ -98,12 +83,14 @@ public class FollowerRequestProcessor extends ZooKeeperCriticalThread implements
         LOG.info("FollowerRequestProcessor exited loop!");
     }
 
+    @Override
     public void processRequest(Request request) {
         if (!finished) {
             queuedRequests.add(request);
         }
     }
 
+    @Override
     public void shutdown() {
         LOG.info("Shutting down");
         finished = true;

@@ -1,42 +1,27 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.apache.zookeeper;
 
 import org.apache.yetus.audience.InterfaceAudience;
 
 /**
+ * 接口类型，其定义了process方法，需子类实现
  * This interface specifies the public interface an event handler class must
  * implement. A ZooKeeper client will get various events from the ZooKeeper
  * server it connects to. An application using such a client handles these
  * events by registering a callback object with the client. The callback object
  * is expected to be an instance of a class that implements Watcher interface.
- * 
+ *
  */
 @InterfaceAudience.Public
 public interface Watcher {
 
     /**
+     * 接口类型，Watcher的内部类，无任何方法
      * This interface defines the possible states an Event may represent
      */
     @InterfaceAudience.Public
     public interface Event {
         /**
+         * 枚举类型，Event的内部类，表示Zookeeper所处的状态。
          * Enumeration of states the ZooKeeper may be at the event
          */
         @InterfaceAudience.Public
@@ -115,6 +100,7 @@ public interface Watcher {
         }
 
         /**
+         * 枚举类型，Event的内部类，表示Zookeeper中发生的事件类型
          * Enumeration of types of events that may occur on the ZooKeeper
          */
         @InterfaceAudience.Public
@@ -147,7 +133,7 @@ public interface Watcher {
                     default:
                         throw new RuntimeException("Invalid integer value for conversion to EventType");
                 }
-            }           
+            }
         }
     }
 

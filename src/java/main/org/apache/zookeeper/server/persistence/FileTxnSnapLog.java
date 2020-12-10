@@ -1,21 +1,3 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.apache.zookeeper.server.persistence;
 
 import java.io.File;
@@ -41,16 +23,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This is a helper class 
- * above the implementations 
- * of txnlog and snapshot 
+ * This is a helper class
+ * above the implementations
+ * of txnlog and snapshot
  * classes
  *
  *
  * FileTnxSnapLog封装了TxnLog和SnapShot，其在持久化过程中是一个帮助类。
  */
 public class FileTxnSnapLog {
-    //the direcotry containing the 
+    //the direcotry containing the
     //the transaction logs
     private final File dataDir;
     //the directory containing the
@@ -60,22 +42,22 @@ public class FileTxnSnapLog {
     private SnapShot snapLog;
     public final static int VERSION = 2;
     public final static String version = "version-";
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(FileTxnSnapLog.class);
-    
+
     /**
      * This listener helps
      * the external apis calling
      * restore to gather information
-     * while the data is being 
+     * while the data is being
      * restored.
      */
     public interface PlayBackListener {
         void onTxnLoaded(TxnHeader hdr, Record rec);
     }
-    
+
     /**
-     * the constructor which takes the datadir and 
+     * the constructor which takes the datadir and
      * snapdir.
      * @param dataDir the trasaction directory
      * @param snapDir the snapshot directory
@@ -152,28 +134,28 @@ public class FileTxnSnapLog {
     public File getDataDir() {
         return this.dataDir;
     }
-    
+
     /**
-     * get the snap dir used by this 
+     * get the snap dir used by this
      * filetxn snap log
      * @return the snap dir
      */
     public File getSnapDir() {
         return this.snapDir;
     }
-    
+
     /**
-     * this function restores the server 
-     * database after reading from the 
+     * this function restores the server
+     * database after reading from the
      * snapshots and transaction logs
      * @param dt the datatree to be restored
      * @param sessions the sessions to be restored
-     * @param listener the playback listener to run on the 
+     * @param listener the playback listener to run on the
      * database restoration
      * @return the highest zxid restored
      * @throws IOException
      */
-    public long restore(DataTree dt, Map<Long, Integer> sessions, 
+    public long restore(DataTree dt, Map<Long, Integer> sessions,
             PlayBackListener listener) throws IOException {
         snapLog.deserialize(dt, sessions);
         return fastForwardFromEdits(dt, sessions, listener);
@@ -201,11 +183,11 @@ public class FileTxnSnapLog {
         TxnHeader hdr;
         try {
             while (true) {
-                // iterator points to 
+                // iterator points to
                 // the first valid txn when initialized
                 hdr = itr.getHeader();
                 if (hdr == null) {
-                    //empty logs 
+                    //empty logs
                     return dt.lastProcessedZxid;
                 }
                 if (hdr.getZxid() < highestZxid && highestZxid != 0) {
@@ -222,7 +204,7 @@ public class FileTxnSnapLog {
                          hdr.getType() + " error: " + e.getMessage(), e);
                 }
                 listener.onTxnLoaded(hdr, itr.getTxn());
-                if (!itr.next()) 
+                if (!itr.next())
                     break;
             }
         } finally {
@@ -232,7 +214,7 @@ public class FileTxnSnapLog {
         }
         return highestZxid;
     }
-    
+
     /**
      * process the transaction on the datatree
      * @param hdr the hdr of the transaction
@@ -309,7 +291,7 @@ public class FileTxnSnapLog {
         LOG.info("Snapshotting: 0x{} to {}", Long.toHexString(lastZxid),
                 snapshotFile);
         snapLog.serialize(dataTree, sessionsWithTimeouts, snapshotFile);
-        
+
     }
 
     /**
@@ -329,7 +311,7 @@ public class FileTxnSnapLog {
         truncLog.close();
 
         // re-open the txnLog and snapLog
-        // I'd rather just close/reopen this object itself, however that 
+        // I'd rather just close/reopen this object itself, however that
         // would have a big impact outside ZKDatabase as there are other
         // objects holding a reference to this object.
         txnLog = new FileTxnLog(dataDir);
@@ -337,11 +319,11 @@ public class FileTxnSnapLog {
 
         return truncated;
     }
-    
+
     /**
      * the most recent snapshot in the snapshot
      * directory
-     * @return the file that contains the most 
+     * @return the file that contains the most
      * recent snapshot
      * @throws IOException
      */
@@ -349,7 +331,7 @@ public class FileTxnSnapLog {
         FileSnap snaplog = new FileSnap(snapDir);
         return snaplog.findMostRecentSnapshot();
     }
-    
+
     /**
      * the n most recent snapshots
      * @param n the number of recent snapshots
@@ -378,7 +360,7 @@ public class FileTxnSnapLog {
     /**
      * append the request to the transaction logs
      * @param si the request to be appended
-     * returns true iff something appended, otw false 
+     * returns true iff something appended, otw false
      * @throws IOException
      */
     public boolean append(Request si) throws IOException {
@@ -395,12 +377,12 @@ public class FileTxnSnapLog {
 
     /**
      * roll the transaction logs
-     * @throws IOException 
+     * @throws IOException
      */
     public void rollLog() throws IOException {
         txnLog.rollLog();
     }
-    
+
     /**
      * close the transaction log files
      * @throws IOException

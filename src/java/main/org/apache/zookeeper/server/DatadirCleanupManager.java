@@ -1,21 +1,3 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.apache.zookeeper.server;
 
 import java.io.File;
@@ -59,7 +41,7 @@ public class DatadirCleanupManager {
     /**
      * Constructor of DatadirCleanupManager. It takes the parameters to schedule
      * the purge task.
-     * 
+     *
      * @param snapDir
      *            snapshot directory
      * @param dataLogDir
@@ -88,7 +70,7 @@ public class DatadirCleanupManager {
      * <code>purgeInterval</code> of <code>0</code> or
      * <code>negative integer</code> will not schedule the purge task.
      * </p>
-     * 
+     *
      * @see PurgeTxnLog#purge(File, File, int)
      */
     public void start() {
@@ -147,7 +129,7 @@ public class DatadirCleanupManager {
 
     /**
      * Returns the status of the purge task.
-     * 
+     *
      * @return the status of the purge task
      */
     public PurgeTaskStatus getPurgeTaskStatus() {
@@ -156,7 +138,7 @@ public class DatadirCleanupManager {
 
     /**
      * Returns the snapshot directory.
-     * 
+     *
      * @return the snapshot directory.
      */
     public String getSnapDir() {
@@ -165,7 +147,7 @@ public class DatadirCleanupManager {
 
     /**
      * Returns transaction log directory.
-     * 
+     *
      * @return the transaction log directory.
      */
     public String getDataLogDir() {
@@ -174,7 +156,7 @@ public class DatadirCleanupManager {
 
     /**
      * Returns purge interval in hours.
-     * 
+     *
      * @return the purge interval in hours.
      */
     public int getPurgeInterval() {
@@ -183,7 +165,7 @@ public class DatadirCleanupManager {
 
     /**
      * Returns the number of snapshots to be retained after purge.
-     * 
+     *
      * @return the number of snapshots to be retained after purge.
      */
     public int getSnapRetainCount() {

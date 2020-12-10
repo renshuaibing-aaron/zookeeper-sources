@@ -1,21 +1,3 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.apache.zookeeper.server;
 
 import java.io.IOException;
@@ -67,6 +49,7 @@ import org.apache.zookeeper.OpResult.SetDataResult;
 import org.apache.zookeeper.OpResult.ErrorResult;
 
 /**
+ * 通常是请求处理链的最后一个处理器。
  * This Request processor actually applies any transaction associated with a
  * request and services any queries. It is always at the end of a
  * RequestProcessor chain (hence the name), so it does not have a nextProcessor
@@ -85,6 +68,7 @@ public class FinalRequestProcessor implements RequestProcessor {
     }
 
     // 请求后置处理器
+    @Override
     public void processRequest(Request request) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Processing request:: " + request);
@@ -97,11 +81,10 @@ public class FinalRequestProcessor implements RequestProcessor {
         if (LOG.isTraceEnabled()) {
             ZooTrace.logRequest(LOG, traceMask, 'E', request, "");
         }
-        ProcessTxnResult rc = null;
+        ProcessTxnResult processTxnResult = null;
         // 从修改记录列表中循环提交修改，包括处理事务，
         synchronized (zks.outstandingChanges) {
-            while (!zks.outstandingChanges.isEmpty()
-                    && zks.outstandingChanges.get(0).zxid <= request.zxid) {
+            while (!zks.outstandingChanges.isEmpty()&& zks.outstandingChanges.get(0).zxid <= request.zxid) {
                 ChangeRecord cr = zks.outstandingChanges.remove(0);
                 if (cr.zxid < request.zxid) {
                     LOG.warn("Zxid outstanding "
@@ -116,7 +99,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                TxnHeader hdr = request.hdr;
                Record txn = request.txn;
 
-               rc = zks.processTxn(hdr, txn);
+                processTxnResult = zks.processTxn(hdr, txn);
             }
             // do not add non quorum packets to the queue.
             // 添加提交历史
@@ -189,7 +172,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 lastOp = "MULT";
                 rsp = new MultiResponse() ;
 
-                for (ProcessTxnResult subTxnResult : rc.multiResult) {
+                for (ProcessTxnResult subTxnResult : processTxnResult.multiResult) {
 
                     OpResult subResult ;
 
@@ -220,31 +203,31 @@ public class FinalRequestProcessor implements RequestProcessor {
             }
             case OpCode.create: {
                 lastOp = "CREA";
-                rsp = new CreateResponse(rc.path);
-                err = Code.get(rc.err);
+                rsp = new CreateResponse(processTxnResult.path);
+                err = Code.get(processTxnResult.err);
                 break;
             }
             case OpCode.delete: {
                 lastOp = "DELE";
-                err = Code.get(rc.err);
+                err = Code.get(processTxnResult.err);
                 break;
             }
             case OpCode.setData: {
                 lastOp = "SETD";
-                rsp = new SetDataResponse(rc.stat);
-                err = Code.get(rc.err);
+                rsp = new SetDataResponse(processTxnResult.stat);
+                err = Code.get(processTxnResult.err);
                 break;
             }
             case OpCode.setACL: {
                 lastOp = "SETA";
-                rsp = new SetACLResponse(rc.stat);
-                err = Code.get(rc.err);
+                rsp = new SetACLResponse(processTxnResult.stat);
+                err = Code.get(processTxnResult.err);
                 break;
             }
             case OpCode.closeSession: {
                 lastOp = "CLOS";
                 closeSession = true;
-                err = Code.get(rc.err);
+                err = Code.get(processTxnResult.err);
                 break;
             }
             case OpCode.sync: {
@@ -257,8 +240,8 @@ public class FinalRequestProcessor implements RequestProcessor {
             }
             case OpCode.check: {
                 lastOp = "CHEC";
-                rsp = new SetDataResponse(rc.stat);
-                err = Code.get(rc.err);
+                rsp = new SetDataResponse(processTxnResult.stat);
+                err = Code.get(processTxnResult.err);
                 break;
             }
             case OpCode.exists: {
@@ -302,8 +285,8 @@ public class FinalRequestProcessor implements RequestProcessor {
                 request.request.rewind();
                 ByteBufferInputStream.byteBuffer2Record(request.request, setWatches);
                 long relativeZxid = setWatches.getRelativeZxid();
-                zks.getZKDatabase().setWatches(relativeZxid, 
-                        setWatches.getDataWatches(), 
+                zks.getZKDatabase().setWatches(relativeZxid,
+                        setWatches.getDataWatches(),
                         setWatches.getExistWatches(),
                         setWatches.getChildWatches(), cnxn);
                 break;
@@ -314,7 +297,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 ByteBufferInputStream.byteBuffer2Record(request.request,
                         getACLRequest);
                 Stat stat = new Stat();
-                List<ACL> acl = 
+                List<ACL> acl =
                     zks.getZKDatabase().getACL(getACLRequest.getPath(), stat);
                 rsp = new GetACLResponse(acl, stat);
                 break;
@@ -362,7 +345,7 @@ public class FinalRequestProcessor implements RequestProcessor {
             // down the connection otw ZOOKEEPER-710 might happen
             // ie client on slow follower starts to renew session, fails
             // before this completes, then tries the fast follower (leader)
-            // and is successful, however the initial renew is then 
+            // and is successful, however the initial renew is then
             // successfully fwd/processed by the leader and as a result
             // the client and leader disagree on where the client is most
             // recently attached (and therefore invalid SESSION MOVED generated)
@@ -403,6 +386,7 @@ public class FinalRequestProcessor implements RequestProcessor {
         }
     }
 
+    @Override
     public void shutdown() {
         // we are the final link in the chain
         LOG.info("shutdown of request processor complete");
